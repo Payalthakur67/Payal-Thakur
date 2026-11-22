@@ -1,0 +1,425 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Student workspace preferences, study goal, and active plan settings for a Notevox user.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the student who owns this profile."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Student display name shown in greetings."
+        },
+        "majorOrGrade": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Optional field of study, major, or grade level."
+        },
+        "dailyGoalMinutes": {
+          "type": "number",
+          "description": "Daily study goal in minutes (between 5 and 720)."
+        },
+        "planId": {
+          "type": "string",
+          "enum": ["starter", "scholar", "campus"],
+          "description": "Active Notevox subscription tier."
+        },
+        "billingCycle": {
+          "type": "string",
+          "enum": ["monthly", "annual"],
+          "description": "Selected billing cadence."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Human-readable payment preference label."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the profile was last updated."
+        }
+      },
+      "required": [
+        "ownerId",
+        "displayName",
+        "majorOrGrade",
+        "dailyGoalMinutes",
+        "planId",
+        "billingCycle",
+        "paymentMethod",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Subject": {
+      "title": "Subject",
+      "description": "An academic subject or course created by the student to organize notes and tasks.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Subject name such as Organic Chemistry or World History."
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 24,
+          "description": "Optional course code such as CHEM-204."
+        },
+        "color": {
+          "type": "string",
+          "enum": ["pink", "green", "sky", "yellow", "lavender"],
+          "description": "Notevox palette color key assigned to the subject."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 240,
+          "description": "Brief notes about the course or syllabus."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "name",
+        "code",
+        "color",
+        "description",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "A manual, AI-generated document, or transcribed audio lecture study note.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "subjectId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": ["manual", "audio", "document"]
+        },
+        "noteStyle": {
+          "type": "string",
+          "enum": ["structured", "cornell", "revision", "summary"]
+        },
+        "sourceFileName": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "audioDurationSec": {
+          "type": "number"
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 120000
+        },
+        "transcript": {
+          "type": "string",
+          "maxLength": 120000
+        },
+        "keyTakeaways": {
+          "type": "array",
+          "description": "Up to 15 concise key takeaways (max 400 chars each)."
+        },
+        "flashcards": {
+          "type": "array",
+          "description": "Up to 30 active-recall flashcard objects with front and back strings."
+        },
+        "wordCount": {
+          "type": "number"
+        },
+        "isPinned": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "title",
+        "subjectId",
+        "sourceType",
+        "noteStyle",
+        "sourceFileName",
+        "audioDurationSec",
+        "summary",
+        "content",
+        "transcript",
+        "keyTakeaways",
+        "flashcards",
+        "wordCount",
+        "isPinned",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StudyTask": {
+      "title": "StudyTask",
+      "description": "A student study task or upcoming reminder optionally linked to a subject or note.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "subjectId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "noteId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "dueDate": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high"]
+        },
+        "reminderEnabled": {
+          "type": "boolean"
+        },
+        "completed": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "title",
+        "details",
+        "subjectId",
+        "noteId",
+        "dueDate",
+        "priority",
+        "reminderEnabled",
+        "completed",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StudyActivity": {
+      "title": "StudyActivity",
+      "description": "Immutable log entry recording real study events for honest dashboard progress summaries.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["note_created", "audio_transcribed", "document_processed", "task_completed", "study_session"]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "subjectId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "durationMinutes": {
+          "type": "number"
+        },
+        "dateKey": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "type",
+        "label",
+        "subjectId",
+        "durationMinutes",
+        "dateKey",
+        "createdAt"
+      ]
+    },
+    "BillingRecord": {
+      "title": "BillingRecord",
+      "description": "Subscription and Razorpay checkout record for Notevox student plans.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "receiptId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "planId": {
+          "type": "string",
+          "enum": ["starter", "scholar", "campus"]
+        },
+        "billingCycle": {
+          "type": "string",
+          "enum": ["monthly", "annual"]
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["razorpay", "card", "upi", "netbanking", "apple_pay", "student_grant"]
+        },
+        "amountCents": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["INR", "USD"]
+        },
+        "promoCode": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "gatewayOrderId": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "gatewayPaymentId": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "gatewayMode": {
+          "type": "string",
+          "enum": ["razorpay_live", "razorpay_test", "razorpay_sandbox", "free_activation"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "completed"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "receiptId",
+        "planId",
+        "billingCycle",
+        "paymentMethod",
+        "amountCents",
+        "currency",
+        "promoCode",
+        "gatewayOrderId",
+        "gatewayPaymentId",
+        "gatewayMode",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Root student profile document owned strictly by the authenticated user."
+    },
+    "/users/{userId}/subjects/{subjectId}": {
+      "schema": { "$ref": "#/entities/Subject" },
+      "description": "Student's personal academic subjects."
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": { "$ref": "#/entities/Note" },
+      "description": "Student's manual, document-parsed, and audio-transcribed study notes."
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/StudyTask" },
+      "description": "Student's upcoming study tasks and reminders."
+    },
+    "/users/{userId}/activities/{activityId}": {
+      "schema": { "$ref": "#/entities/StudyActivity" },
+      "description": "Student's real study progress and activity log entries."
+    },
+    "/users/{userId}/billingRecords/{recordId}": {
+      "schema": { "$ref": "#/entities/BillingRecord" },
+      "description": "Student's subscription checkout and payment records."
+    }
+  }
+}

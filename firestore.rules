@@ -1,0 +1,463 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Default-Deny Safety Net (Pillar 4.1)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Hardened Global Primitives (Phase 3)
+    // -------------------------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOptionalId(id) {
+      return id is string && (id == '' || (id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$')));
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function userProfileExists(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    // -------------------------------------------------------------------------
+    // Entity Validation Blueprints (Pillar 2 — Anti-Update-Gap)
+    // -------------------------------------------------------------------------
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'displayName', 'majorOrGrade', 'dailyGoalMinutes',
+          'planId', 'billingCycle', 'paymentMethod', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'displayName', 'majorOrGrade', 'dailyGoalMinutes',
+          'planId', 'billingCycle', 'paymentMethod', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && data.ownerId == userId
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && data.majorOrGrade is string && data.majorOrGrade.size() <= 80
+        && data.dailyGoalMinutes is number && data.dailyGoalMinutes >= 5 && data.dailyGoalMinutes <= 720
+        && data.planId is string && data.planId in ['starter', 'scholar', 'campus']
+        && data.billingCycle is string && data.billingCycle in ['monthly', 'annual']
+        && data.paymentMethod is string && data.paymentMethod.size() <= 60
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSubject(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'code', 'color', 'description', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'name', 'code', 'color', 'description', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && data.ownerId == userId
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && data.code is string && data.code.size() <= 24
+        && data.color is string && data.color in ['pink', 'green', 'sky', 'yellow', 'lavender']
+        && data.description is string && data.description.size() <= 240
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTakeawaysList(listVal) {
+      return listVal is list
+        && listVal.size() <= 15
+        && (listVal.size() == 0 || (listVal[0] is string && listVal[0].size() <= 400));
+    }
+
+    function isValidFlashcardsList(listVal) {
+      return listVal is list
+        && listVal.size() <= 30
+        && (
+          listVal.size() == 0 || (
+            listVal[0] is map
+            && listVal[0].keys().hasAll(['front', 'back'])
+            && listVal[0].keys().hasOnly(['front', 'back'])
+            && listVal[0].front is string && listVal[0].front.size() >= 1 && listVal[0].front.size() <= 500
+            && listVal[0].back is string && listVal[0].back.size() >= 1 && listVal[0].back.size() <= 1000
+          )
+        );
+    }
+
+    function isValidNote(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'title', 'subjectId', 'sourceType', 'noteStyle',
+          'sourceFileName', 'audioDurationSec', 'summary', 'content',
+          'transcript', 'keyTakeaways', 'flashcards', 'wordCount',
+          'isPinned', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'title', 'subjectId', 'sourceType', 'noteStyle',
+          'sourceFileName', 'audioDurationSec', 'summary', 'content',
+          'transcript', 'keyTakeaways', 'flashcards', 'wordCount',
+          'isPinned', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && data.ownerId == userId
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && isOptionalId(data.subjectId)
+        && data.sourceType is string && data.sourceType in ['manual', 'audio', 'document']
+        && data.noteStyle is string && data.noteStyle in ['structured', 'cornell', 'revision', 'summary']
+        && data.sourceFileName is string && data.sourceFileName.size() <= 200
+        && data.audioDurationSec is number && data.audioDurationSec >= 0 && data.audioDurationSec <= 36000
+        && data.summary is string && data.summary.size() <= 4000
+        && data.content is string && data.content.size() <= 120000
+        && data.transcript is string && data.transcript.size() <= 120000
+        && isValidTakeawaysList(data.keyTakeaways)
+        && isValidFlashcardsList(data.flashcards)
+        && data.wordCount is number && data.wordCount >= 0 && data.wordCount <= 100000
+        && data.isPinned is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidStudyTask(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'title', 'details', 'subjectId', 'noteId', 'dueDate',
+          'priority', 'reminderEnabled', 'completed', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'title', 'details', 'subjectId', 'noteId', 'dueDate',
+          'priority', 'reminderEnabled', 'completed', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && data.ownerId == userId
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.details is string && data.details.size() <= 500
+        && isOptionalId(data.subjectId)
+        && isOptionalId(data.noteId)
+        && data.dueDate is string && data.dueDate.size() <= 32
+        && data.priority is string && data.priority in ['low', 'medium', 'high']
+        && data.reminderEnabled is bool
+        && data.completed is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidStudyActivity(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'type', 'label', 'subjectId', 'durationMinutes', 'dateKey', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'type', 'label', 'subjectId', 'durationMinutes', 'dateKey', 'createdAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && data.ownerId == userId
+        && data.type is string && data.type in ['note_created', 'audio_transcribed', 'document_processed', 'task_completed', 'study_session']
+        && data.label is string && data.label.size() >= 1 && data.label.size() <= 160
+        && isOptionalId(data.subjectId)
+        && data.durationMinutes is number && data.durationMinutes >= 0 && data.durationMinutes <= 600
+        && data.dateKey is string && data.dateKey.size() == 10 && data.dateKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.createdAt is timestamp;
+    }
+
+    function isValidBillingRecord(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'receiptId', 'planId', 'billingCycle', 'paymentMethod',
+          'amountCents', 'currency', 'promoCode', 'gatewayOrderId',
+          'gatewayPaymentId', 'gatewayMode', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'receiptId', 'planId', 'billingCycle', 'paymentMethod',
+          'amountCents', 'currency', 'promoCode', 'gatewayOrderId',
+          'gatewayPaymentId', 'gatewayMode', 'status', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == request.auth.uid
+        && data.ownerId == userId
+        && data.receiptId is string && data.receiptId.size() >= 4 && data.receiptId.size() <= 64 && data.receiptId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.planId is string && data.planId in ['starter', 'scholar', 'campus']
+        && data.billingCycle is string && data.billingCycle in ['monthly', 'annual']
+        && data.paymentMethod is string && data.paymentMethod in ['razorpay', 'card', 'upi', 'netbanking', 'apple_pay', 'student_grant']
+        && data.amountCents is number && data.amountCents >= 0 && data.amountCents <= 5000000
+        && data.currency is string && data.currency in ['INR', 'USD']
+        && data.promoCode is string && data.promoCode.size() <= 32
+        && data.gatewayOrderId is string && data.gatewayOrderId.size() <= 100
+        && data.gatewayPaymentId is string && data.gatewayPaymentId.size() <= 100
+        && data.gatewayMode is string && data.gatewayMode in ['razorpay_live', 'razorpay_test', 'razorpay_sandbox', 'free_activation']
+        && data.status is string && data.status in ['pending', 'completed']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // -------------------------------------------------------------------------
+    // Collection Match Blocks (All Collections Covered)
+    // -------------------------------------------------------------------------
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && isOwner(userId);
+      allow list: if false;
+
+      allow create: if isVerified()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerified()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Update student profile preferences
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'majorOrGrade', 'dailyGoalMinutes', 'updatedAt']) ||
+          // Action: Update subscription plan & payment preference
+          incoming().diff(existing()).affectedKeys().hasOnly(['planId', 'billingCycle', 'paymentMethod', 'updatedAt'])
+        );
+
+      allow delete: if false;
+
+      // Subjects Subcollection
+      match /subjects/{subjectId} {
+        allow get: if isSignedIn()
+          && isValidId(userId)
+          && isValidId(subjectId)
+          && isOwner(userId)
+          && userProfileExists(userId);
+
+        allow list: if isSignedIn()
+          && isValidId(userId)
+          && isOwner(userId)
+          && resource.data.ownerId == request.auth.uid;
+
+        allow create: if isVerified()
+          && isValidId(userId)
+          && isValidId(subjectId)
+          && isOwner(userId)
+          && isValidSubject(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && userProfileExists(userId);
+
+        allow update: if isVerified()
+          && isValidId(userId)
+          && isValidId(subjectId)
+          && isOwner(userId)
+          && isValidSubject(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && userProfileExists(userId)
+          && (
+            // Action: Edit subject details
+            incoming().diff(existing()).affectedKeys().hasOnly(['name', 'code', 'color', 'description', 'updatedAt'])
+          );
+
+        allow delete: if isVerified()
+          && isValidId(userId)
+          && isValidId(subjectId)
+          && isOwner(userId)
+          && userProfileExists(userId);
+      }
+
+      // Notes Subcollection
+      match /notes/{noteId} {
+        allow get: if isSignedIn()
+          && isValidId(userId)
+          && isValidId(noteId)
+          && isOwner(userId)
+          && userProfileExists(userId);
+
+        allow list: if isSignedIn()
+          && isValidId(userId)
+          && isOwner(userId)
+          && resource.data.ownerId == request.auth.uid;
+
+        allow create: if isVerified()
+          && isValidId(userId)
+          && isValidId(noteId)
+          && isOwner(userId)
+          && isValidNote(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && userProfileExists(userId);
+
+        allow update: if isVerified()
+          && isValidId(userId)
+          && isValidId(noteId)
+          && isOwner(userId)
+          && isValidNote(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && userProfileExists(userId)
+          && (
+            // Action: Edit note text, summary, takeaways, subject, or transcript
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'subjectId', 'noteStyle', 'summary', 'content',
+              'transcript', 'keyTakeaways', 'wordCount', 'updatedAt'
+            ]) ||
+            // Action: AI Re-synthesis updating structured notes and flashcards together
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'noteStyle', 'summary', 'content', 'keyTakeaways',
+              'flashcards', 'wordCount', 'updatedAt'
+            ]) ||
+            // Action: Update flashcards deck
+            incoming().diff(existing()).affectedKeys().hasOnly(['flashcards', 'updatedAt']) ||
+            // Action: Pin or unpin note
+            incoming().diff(existing()).affectedKeys().hasOnly(['isPinned', 'updatedAt'])
+          );
+
+        allow delete: if isVerified()
+          && isValidId(userId)
+          && isValidId(noteId)
+          && isOwner(userId)
+          && userProfileExists(userId);
+      }
+
+      // Study Tasks Subcollection
+      match /tasks/{taskId} {
+        allow get: if isSignedIn()
+          && isValidId(userId)
+          && isValidId(taskId)
+          && isOwner(userId)
+          && userProfileExists(userId);
+
+        allow list: if isSignedIn()
+          && isValidId(userId)
+          && isOwner(userId)
+          && resource.data.ownerId == request.auth.uid;
+
+        allow create: if isVerified()
+          && isValidId(userId)
+          && isValidId(taskId)
+          && isOwner(userId)
+          && isValidStudyTask(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && userProfileExists(userId);
+
+        allow update: if isVerified()
+          && isValidId(userId)
+          && isValidId(taskId)
+          && isOwner(userId)
+          && isValidStudyTask(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && userProfileExists(userId)
+          && (
+            // Action: Toggle completion
+            incoming().diff(existing()).affectedKeys().hasOnly(['completed', 'updatedAt']) ||
+            // Action: Toggle reminder
+            incoming().diff(existing()).affectedKeys().hasOnly(['reminderEnabled', 'updatedAt']) ||
+            // Action: Edit task details
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'details', 'subjectId', 'noteId', 'dueDate',
+              'priority', 'reminderEnabled', 'updatedAt'
+            ])
+          );
+
+        allow delete: if isVerified()
+          && isValidId(userId)
+          && isValidId(taskId)
+          && isOwner(userId)
+          && userProfileExists(userId);
+      }
+
+      // Study Activities Subcollection (Immutable Audit Log)
+      match /activities/{activityId} {
+        allow get: if isSignedIn()
+          && isValidId(userId)
+          && isValidId(activityId)
+          && isOwner(userId)
+          && userProfileExists(userId);
+
+        allow list: if isSignedIn()
+          && isValidId(userId)
+          && isOwner(userId)
+          && resource.data.ownerId == request.auth.uid;
+
+        allow create: if isVerified()
+          && isValidId(userId)
+          && isValidId(activityId)
+          && isOwner(userId)
+          && isValidStudyActivity(incoming(), userId)
+          && incoming().createdAt == request.time
+          && userProfileExists(userId);
+
+        allow update: if false;
+
+        allow delete: if isVerified()
+          && isValidId(userId)
+          && isValidId(activityId)
+          && isOwner(userId)
+          && userProfileExists(userId);
+      }
+
+      // Billing Records Subcollection (Terminal State Locked once completed)
+      match /billingRecords/{recordId} {
+        allow get: if isSignedIn()
+          && isValidId(userId)
+          && isValidId(recordId)
+          && isOwner(userId)
+          && userProfileExists(userId);
+
+        allow list: if isSignedIn()
+          && isValidId(userId)
+          && isOwner(userId)
+          && resource.data.ownerId == request.auth.uid;
+
+        allow create: if isVerified()
+          && isValidId(userId)
+          && isValidId(recordId)
+          && isOwner(userId)
+          && isValidBillingRecord(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && userProfileExists(userId);
+
+        allow update: if isVerified()
+          && isValidId(userId)
+          && isValidId(recordId)
+          && isOwner(userId)
+          && isValidBillingRecord(incoming(), userId)
+          && existing().status != 'completed'
+          && incoming().ownerId == existing().ownerId
+          && incoming().receiptId == existing().receiptId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && userProfileExists(userId)
+          && (
+            // Action: Finalize pending checkout record
+            incoming().status == 'completed' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          );
+
+        allow delete: if false;
+      }
+    }
+  }
+}

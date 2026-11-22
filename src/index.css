@@ -1,0 +1,217 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Bricolage Grotesque", system-ui, -apple-system, sans-serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-nv-paper: #FFFDF8;
+  --color-nv-cream: #F7F2E7;
+  --color-nv-border: #E8E0D0;
+  --color-nv-ink: #1C1926;
+  --color-nv-muted: #5C566C;
+  --color-nv-pink: #F4A6C6;
+  --color-nv-green: #83D66F;
+  --color-nv-sky: #62B8F5;
+  --color-nv-yellow: #FFD45C;
+  --color-nv-lavender: #C9B6F5;
+}
+
+@layer base {
+  html,
+  body {
+    background-color: #FFFDF8;
+    color: #1C1926;
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid #1C1926;
+    outline-offset: 2px;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tactile architectural drafting-paper canvas */
+.nv-dot-canvas {
+  background-color: #FFFDF8;
+  background-image: radial-gradient(rgba(28, 25, 38, 0.065) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Crisp Notevox 5-color studio spectrum bar */
+.nv-spectrum-bar {
+  background: linear-gradient(
+    90deg,
+    #F4A6C6 0%,
+    #F4A6C6 20%,
+    #FFD45C 20%,
+    #FFD45C 40%,
+    #83D66F 40%,
+    #83D66F 60%,
+    #62B8F5 60%,
+    #62B8F5 80%,
+    #C9B6F5 80%,
+    #C9B6F5 100%
+  );
+}
+
+/* Tactile studio hardware console bezel */
+.nv-hardware-deck {
+  background: linear-gradient(155deg, #252136 0%, #171422 100%);
+  box-shadow: 0 18px 36px -18px rgba(28, 25, 38, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Refined Neo-Pop studio card with subtle tactile hover */
+.nv-studio-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E5DCCB;
+  box-shadow: 0 2px 0 0 rgba(28, 25, 38, 0.04);
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.nv-studio-card-interactive:hover {
+  transform: translateY(-2px);
+  border-color: #1C1926;
+  box-shadow: 0 8px 0 -2px rgba(28, 25, 38, 0.08);
+}
+
+/* Editorial study note typography */
+.nv-prose {
+  color: #1C1926;
+  font-size: 0.96875rem;
+  line-height: 1.72;
+  max-width: 72ch;
+}
+
+.nv-prose h1 {
+  font-family: var(--font-display);
+  font-size: 1.625rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+.nv-prose h2 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 1.65rem;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid #EAE3D5;
+  letter-spacing: -0.015em;
+}
+
+.nv-prose h3 {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.45rem;
+}
+
+.nv-prose p {
+  margin-bottom: 0.85rem;
+  color: #2A2638;
+}
+
+.nv-prose ul,
+.nv-prose ol {
+  margin-bottom: 1rem;
+  padding-left: 1.35rem;
+}
+
+.nv-prose ul {
+  list-style-type: disc;
+}
+
+.nv-prose ol {
+  list-style-type: decimal;
+}
+
+.nv-prose li {
+  margin-bottom: 0.35rem;
+  color: #2A2638;
+}
+
+.nv-prose strong {
+  font-weight: 600;
+  color: #1C1926;
+}
+
+.nv-prose blockquote {
+  margin: 1rem 0;
+  padding: 0.85rem 1.1rem;
+  border-radius: 0.75rem;
+  background-color: #F7F2E7;
+  border: 1px solid #E8E0D0;
+  color: #2A2638;
+}
+
+.nv-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background-color: #F3EEE2;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.35rem;
+  color: #1C1926;
+}
+
+.nv-prose pre {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background-color: #1C1926;
+  color: #FFFDF8;
+  overflow-x: auto;
+}
+
+.nv-prose pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.nv-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.1rem 0;
+  font-size: 0.9rem;
+}
+
+.nv-prose th,
+.nv-prose td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #E8E0D0;
+}
+
+.nv-prose th {
+  font-weight: 600;
+  background-color: #F7F2E7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

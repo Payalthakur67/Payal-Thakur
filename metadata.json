@@ -1,0 +1,6 @@
+{
+  "name": "Notevox",
+  "description": "Your Knowledge. Your Way. An AI-powered student productivity platform for smart study notes, lecture recording, speech-to-text transcription, and study planning.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
