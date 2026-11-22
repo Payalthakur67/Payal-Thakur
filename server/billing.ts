@@ -172,10 +172,6 @@ interface PendingOrderRecord {
 const pendingOrders = new Map<string, PendingOrderRecord>();
 const sandboxHmacSecret = crypto.randomBytes(32).toString('hex');
 
-// Public publishable Razorpay Test Key ID (safe for client-side Razorpay Checkout).
-// Override anytime via RAZORPAY_KEY_ID in Settings > Secrets.
-const DEFAULT_PUBLIC_RAZORPAY_TEST_KEY_ID = 'rzp_test_U2QlC3A7Q3oInb';
-
 function maskKeyId(keyId: string): string {
   if (keyId.length <= 12) return keyId;
   return `${keyId.slice(0, 9)}••••${keyId.slice(-4)}`;
@@ -199,7 +195,7 @@ export function getRazorpayConfig(): {
   const validEnvSecret =
     envKeySecret && !envKeySecret.includes('YOUR_RAZORPAY') ? envKeySecret : '';
 
-  const effectiveKeyId = validEnvKeyId || DEFAULT_PUBLIC_RAZORPAY_TEST_KEY_ID;
+  const effectiveKeyId = validEnvKeyId;
   const hasSecret = Boolean(validEnvSecret);
 
   if (!effectiveKeyId) {
@@ -341,39 +337,43 @@ export async function createRazorpayOrder(params: {
       error?: { description?: string; code?: string };
     };
 
-    if (!rzpRes.ok || !rzpBody.id) {
+    if (rzpRes.ok && rzpBody.id) {
+      pendingOrders.set(rzpBody.id, {
+        orderId: rzpBody.id,
+        receiptId,
+        planId: quote.planId,
+        billingCycle: quote.billingCycle,
+        currency: quote.currency,
+        amountSubunits: quote.totalCents,
+        promoCode: quote.promoCode,
+        gatewayMode: rzp.mode,
+        requiresSignature: true,
+        createdAtMs: Date.now(),
+      });
+
+      return {
+        freeActivation: false as const,
+        gatewayMode: rzp.mode,
+        keyId: rzp.keyId,
+        orderId: rzpBody.id,
+        useRazorpayOrderId: true,
+        amount: rzpBody.amount ?? quote.totalCents,
+        currency: (rzpBody.currency as CurrencyCode) || quote.currency,
+        receiptId,
+        planId: quote.planId,
+        billingCycle: quote.billingCycle,
+        promoCode: quote.promoCode,
+      };
+    }
+
+    // In Test Mode, if Orders API returns 401 (missing/mismatched secret), seamlessly
+    // fall back to Official Razorpay Standard Checkout (Key-ID-only modal).
+    if (!(rzpRes.status === 401 && rzp.mode === 'razorpay_test')) {
       const desc =
         rzpBody.error?.description ||
         `Razorpay Orders API returned HTTP ${rzpRes.status}. Verify RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in Settings > Secrets.`;
       throw new Error(desc);
     }
-
-    pendingOrders.set(rzpBody.id, {
-      orderId: rzpBody.id,
-      receiptId,
-      planId: quote.planId,
-      billingCycle: quote.billingCycle,
-      currency: quote.currency,
-      amountSubunits: quote.totalCents,
-      promoCode: quote.promoCode,
-      gatewayMode: rzp.mode,
-      requiresSignature: true,
-      createdAtMs: Date.now(),
-    });
-
-    return {
-      freeActivation: false as const,
-      gatewayMode: rzp.mode,
-      keyId: rzp.keyId,
-      orderId: rzpBody.id,
-      useRazorpayOrderId: true,
-      amount: rzpBody.amount ?? quote.totalCents,
-      currency: (rzpBody.currency as CurrencyCode) || quote.currency,
-      receiptId,
-      planId: quote.planId,
-      billingCycle: quote.billingCycle,
-      promoCode: quote.promoCode,
-    };
   }
 
   // 3. Official Razorpay Standard Checkout (Key-ID-only Test Mode — opens real checkout.razorpay.com modal!)

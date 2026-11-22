@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel, Type } from '@google/genai';
 import mammoth from 'mammoth';
 
 export type NoteStyleOption = 'structured' | 'cornell' | 'revision' | 'summary';
@@ -34,6 +34,7 @@ function getClient(): GoogleGenAI {
   if (!cachedClient) {
     cachedClient = new GoogleGenAI({
       apiKey,
+      apiVersion: 'v1beta',
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
@@ -220,6 +221,7 @@ function sanitizeStructuredNote(raw: unknown, fallbackTitle: string): Structured
 
 /**
  * Transcribe recorded or uploaded lecture audio using gemini-3.5-transcribe
+ * (with automatic fallback to multimodal gemini-4-hydrogen if a key lacks 3.5-transcribe)
  */
 export async function transcribeAudioBuffer(
   buffer: Buffer,
@@ -230,27 +232,46 @@ export async function transcribeAudioBuffer(
   const normalizedMime = normalizeAudioMimeType(mimeType, originalName);
   const base64Audio = buffer.toString('base64');
 
-  const response = await withRetry(() =>
-    ai.models.generateContent({
-      model: 'gemini-3.5-transcribe',
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: normalizedMime,
-              data: base64Audio,
-            },
-          },
-          {
-            text:
-              'Transcribe this lecture or study recording accurately into clean, well-punctuated text. ' +
-              'Preserve technical terminology, academic terms, equations, and natural paragraph breaks. ' +
-              'If multiple speakers appear, separate speaker turns cleanly. Do not invent content not spoken in the audio.',
-          },
-        ],
+  const parts = [
+    {
+      inlineData: {
+        mimeType: normalizedMime,
+        data: base64Audio,
       },
-    })
-  );
+    },
+    {
+      text:
+        'Transcribe this lecture or study recording accurately into clean, well-punctuated text. ' +
+        'Preserve technical terminology, academic terms, equations, and natural paragraph breaks. ' +
+        'If multiple speakers appear, separate speaker turns cleanly. Do not invent content not spoken in the audio.',
+    },
+  ];
+
+  let response;
+  try {
+    response = await withRetry(() =>
+      ai.models.generateContent({
+        model: 'gemini-3.5-transcribe',
+        contents: { parts },
+      })
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const isModelNotFound =
+      msg.includes('404') || msg.includes('NOT_FOUND') || msg.includes('is not found');
+    if (!isModelNotFound) {
+      throw err;
+    }
+    response = await withRetry(() =>
+      ai.models.generateContent({
+        model: 'gemini-4-hydrogen',
+        contents: { parts },
+        config: {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        },
+      })
+    );
+  }
 
   const transcript = (response.text ?? '').trim();
   if (!transcript) {
@@ -299,6 +320,7 @@ export async function generateStructuredNotesFromText(params: {
         systemInstruction,
         responseMimeType: 'application/json',
         responseSchema: STRUCTURED_NOTE_SCHEMA,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       },
     })
   );
@@ -417,6 +439,7 @@ export async function processUploadedDocument(params: {
         systemInstruction,
         responseMimeType: 'application/json',
         responseSchema: STRUCTURED_NOTE_SCHEMA,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       },
     })
   );
@@ -455,6 +478,7 @@ export async function generateFlashcardsForNote(params: {
         systemInstruction:
           'You create crisp, memorable active-recall flashcards for university and high-school students. Keep questions focused and answers accurate and concise.',
         responseMimeType: 'application/json',
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         responseSchema: {
           type: Type.ARRAY,
           items: {
@@ -524,6 +548,7 @@ export async function askQuestionAboutNote(params: {
         systemInstruction:
           'You are Notevox, a helpful, clear study tutor. Answer the student question using the provided note and lecture transcript as your primary source. ' +
           'If a detail is not covered in the note, say so honestly before offering a brief helpful clarification. Use clear Markdown formatting.',
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       },
     })
   );
